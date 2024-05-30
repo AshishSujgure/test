@@ -69,7 +69,7 @@ jobs:
               --name "AWS-RunDocument" \
               --association-name "${base_document_name}" \
               --targets "Key=${{ github.event.inputs.AssociationTargetTagKey }},Values=${{ github.event.inputs.AssociationTargetTagValue }}" \
-              --parameters "sourceType=[S3],sourceInfo=[https://s3.amazonaws.com/infraeng-ssm/infeng-github/accounts/${{ env.account_id }}/${{ github.event.inputs.document_name }}]" \
+              --parameters '{"sourceType":["S3"],"sourceInfo":["{\"path\":\"https://s3.amazonaws.com/infraeng-ssm/infeng-github/accounts/${{ env.account_id }}/${{ github.event.inputs.document_name }}\"}"]}' \
               --schedule-expression "${{ github.event.inputs.ScheduleExpression }}"
           else
             echo "Updating existing SSM Association"
@@ -77,6 +77,6 @@ jobs:
               --association-id "${{ env.association_id }}" \
               --name "AWS-RunDocument" \
               --targets "Key=${{ github.event.inputs.AssociationTargetTagKey }},Values=${{ github.event.inputs.AssociationTargetTagValue }}" \
-              --parameters "sourceType=[S3],sourceInfo=[https://s3.amazonaws.com/infraeng-ssm/infeng-github/accounts/${{ env.account_id }}/${{ github.event.inputs.document_name }}]" \
+              --parameters '{"sourceType":["S3"],"sourceInfo":["{\"path\":\"https://s3.amazonaws.com/infraeng-ssm/infeng-github/accounts/${{ env.account_id }}/${{ github.event.inputs.document_name }}\"}"]}' \
               --schedule-expression "${{ github.event.inputs.ScheduleExpression }}"
           fi
