@@ -15,7 +15,22 @@ on:
       region:
         description: 'AWS Region'
         required: true
-
+      document_name:
+        description: 'Document file name added in S3 bucket'
+        required: true
+      AssociationTargetTagKey:
+        description: 'EC2 instance key to apply the association, if not defined association will be applied to all EC2 instances in specified region'
+        default: InstanceIds
+      AssociationTargetTagValue:
+        description: 'EC2 instance value to apply the association, if not defined association will be applied to all EC2 instances in specified region'
+        default: '*'
+      ComplianceSeverity:
+        description: 'The severity level that is assigned to the association, if not specified defaults to CRITICAL'
+        default: CRITICAL
+      ScheduleExpression:
+        description: 'A cron expression that specifies a schedule when the association runs, if not specified defaults to 1 day'
+        default: rate(1 day)
+        
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -34,30 +49,34 @@ jobs:
         id: get-account-id
         run: |
           account_id=$(aws sts get-caller-identity --query Account --output text)
+          echo "account_id=$account_id" >> $GITHUB_ENV
           echo "::set-output name=account_id::$account_id"
 
       - name: Check for Existing SSM Association
         id: check_association
         run: |
-          document_name=${{ steps.get-account-id.outputs.account_id }}
-          association_id=$(aws ssm list-associations --query "Associations[?AssociationName=='${document_name}'].AssociationId" --output text)
+          document_name_actual=${{ github.event.inputs.document_name }}
+          base_document_name="${document_name_actual%.*}"
+          association_id=$(aws ssm list-associations --query "Associations[?AssociationName=='${base_document_name}'].AssociationId" --output text)
           echo "association_id=${association_id}" >> $GITHUB_ENV
 
       - name: Create or Update SSM Association
         run: |
+          base_document_name="${{ github.event.inputs.document_name%.* }}"
           if [ -z "${{ env.association_id }}" ]; then
             echo "Creating new SSM Association"
             aws ssm create-association \
-              --name "${document_name}" \
-              --association-name "${document_name}" \
-              --document-version "\$LATEST" \
-              --targets "Key=InstanceIds,Values=*" \
-              --schedule-expression "rate(1 day)"
+              --name "AWS-RunDocument" \
+              --association-name "${base_document_name}" \
+              --targets "Key=${{ github.event.inputs.AssociationTargetTagKey }},Values=${{ github.event.inputs.AssociationTargetTagValue }}" \
+              --parameters "sourceType=[S3],sourceInfo=[https://s3.amazonaws.com/infraeng-ssm/infeng-github/accounts/${{ env.account_id }}/${{ github.event.inputs.document_name }}]" \
+              --schedule-expression "${{ github.event.inputs.ScheduleExpression }}"
           else
             echo "Updating existing SSM Association"
             aws ssm update-association \
               --association-id "${{ env.association_id }}" \
-              --name "${document_name}" \
-              --targets "Key=InstanceIds,Values=*" \
-              --schedule-expression "rate(1 day)"
+              --name "AWS-RunDocument" \
+              --targets "Key=${{ github.event.inputs.AssociationTargetTagKey }},Values=${{ github.event.inputs.AssociationTargetTagValue }}" \
+              --parameters "sourceType=[S3],sourceInfo=[https://s3.amazonaws.com/infraeng-ssm/infeng-github/accounts/${{ env.account_id }}/${{ github.event.inputs.document_name }}]" \
+              --schedule-expression "${{ github.event.inputs.ScheduleExpression }}"
           fi
