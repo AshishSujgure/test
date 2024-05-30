@@ -57,7 +57,8 @@ jobs:
         run: |
           document_name_actual=${{ github.event.inputs.document_name }}
           echo "base_document_name="${document_name_actual%.*}" >> $GITHUB_ENV
-          echo "association_id=$(aws ssm list-associations --query "Associations[?AssociationName=='${base_document_name}'].AssociationId" --output text)" >> $GITHUB_ENV
+          association=$(aws ssm list-associations --query "Associations[?AssociationName=='${base_document_name}'].AssociationId" --output text)
+          echo "association_id=${association}" >> $GITHUB_ENV
 
       - name: Create or Update SSM Association
         run: |
