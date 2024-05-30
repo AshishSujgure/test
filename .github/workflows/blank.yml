@@ -62,7 +62,6 @@ jobs:
 
       - name: Create or Update SSM Association
         run: |
-          base_document_name="${{ github.event.inputs.document_name%.* }}"
           if [ -z "${{ env.association_id }}" ]; then
             echo "Creating new SSM Association"
             aws ssm create-association \
