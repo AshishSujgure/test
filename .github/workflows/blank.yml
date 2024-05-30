@@ -51,15 +51,16 @@ jobs:
           account_id=$(aws sts get-caller-identity --query Account --output text)
           echo "account_id=$account_id" >> $GITHUB_ENV
           echo "::set-output name=account_id::$account_id"
-
+          
       - name: Check for Existing SSM Association
         id: check_association
         run: |
           document_name_actual=${{ github.event.inputs.document_name }}
-          echo "base_document_name="${document_name_actual%.*}" >> $GITHUB_ENV
-          association=$(aws ssm list-associations --query "Associations[?AssociationName=='${base_document_name}'].AssociationId" --output text)
-          echo "association_id=${association}" >> $GITHUB_ENV
-
+          base_document_name="${document_name_actual%.*}"
+          echo "base_document_name=${base_document_name}" >> $GITHUB_ENV
+          association_id=$(aws ssm list-associations --query "Associations[?AssociationName=='${base_document_name}'].AssociationId" --output text)
+          echo "association_id=${association_id}" >> $GITHUB_ENV
+          
       - name: Create or Update SSM Association
         run: |
           if [ -z "${{ env.association_id }}" ]; then
